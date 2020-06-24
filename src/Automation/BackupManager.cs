@@ -27,7 +27,7 @@ namespace Vellum.Automation
         ///<param name="destinationPath">Path to copy the world to.</param>
         ///<param name="fullCopy">Whether to copy the whole world directory instead of just the updated files. The server must not be running for a full copy.</param>
         ///<param name="archive">Whether to archive the backup as a compressed .zip-file.</param>
-        public void CreateWorldBackup(string worldPath, string destinationPath, bool fullCopy, bool archive)
+        public void CreateWorldBackup(string worldPath, string destinationPath, bool fullCopy, bool archive,bool force)
         {
             Processing = true;
 
@@ -38,7 +38,42 @@ namespace Vellum.Automation
                 ProcessManager.RunCustomCommand(RunConfig.Backups.PreExec);
             }
             #endregion
+             if (_bds.IsRunning)
+            {
 
+                _bds.SendInput("list");
+                _bds.SetMatchPattern(@"^(There are [0-9]{1,5}\/[0-9]{1,5} players online\:)");
+                while (!_bds.HasMatched)
+                {
+                    Thread.Sleep(QueryTimeout);
+                }
+                string players_str = Regex.Match(_bds.GetMatchedText(), @"([0-9]{1,5}\/)").Value; //should return the There are... string 
+                players_str = players_str.Remove(players_str.Length - 1); //since the value returned is 0/ so the '/' has to be removed.
+                int players = Int32.Parse(players_str);
+                Log(String.Format("{0} Players Online: {1}", _tag, players));
+                if (_bds.nextbackup == false && players == 0 && force == false)
+                {
+                    Log(String.Format("{0}Backup not taken due to no players online.", _tag));
+                    _bds.SendInput("save resume");
+                    Processing = false;
+                    _bds.playerleft = true;
+                    return;
+                }
+                if (players > 0 || force)
+                {
+                    _bds.nextbackup = true;
+                    Log(String.Format("{0}Taking backup", _tag));
+
+
+                }
+                else
+                {
+                    _bds.nextbackup = false;
+                    Log(String.Format("{0}No player is online,next backup will not be taken", _tag));
+
+                }
+
+            }
             Log(String.Format("{0}Creating backup...", _tag));
             // Send tellraw message 1/2
             _bds.SendTellraw("Creating backup...");

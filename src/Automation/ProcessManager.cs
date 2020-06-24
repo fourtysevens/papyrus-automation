@@ -7,6 +7,8 @@ namespace Vellum.Automation
 {
     public class ProcessManager
     {
+        public bool playerleft = true;
+        public bool nextbackup = false;
         public Process Process { get; private set; }
         private ProcessStartInfo _startInfo;
         private string[] _ignorePatterns = new string[0];
@@ -172,7 +174,18 @@ namespace Vellum.Automation
             if (!String.IsNullOrEmpty(e.Data))
             {
                 _lastMessage = e.Data;
+                 if (e.Data.Length >= 1)
+                    {
+                        string player_left = Regex.Match(e.Data, @"(Player disconnected)").Value;
+                        if (player_left.Length >= 1)
+                        {
+                            playerleft = false;
+                            nextbackup = true;
+                            Program.backupIntervalTimer.Interval = 30000; //~30 second delay at best incase of too many players leave which sets the Processing flag to true
+                            Program.backupIntervalTimer.Start();
+                        }
 
+                    }
                 if (!HasMatched && _pattern != null)
                 {
                     if (Regex.Matches(e.Data, _pattern).Count >= 1)

@@ -13,6 +13,7 @@ namespace Vellum
 {
     class Program
     {
+        public static System.Timers.Timer backupIntervalTimer;
         private static string _configPath = "configuration.json";
         private const string _tempPath = "temp/";
         public static RunConfiguration RunConfig;
@@ -153,7 +154,7 @@ namespace Vellum
                 {
                     // Create initial world backup
                     Console.WriteLine("Creating initial world backup...");
-                    _backupManager.CreateWorldBackup(worldPath, tempWorldPath, true, false); // If "StopBeforeBackup" is set to "true" this will also automatically start the server when it's done
+                    _backupManager.CreateWorldBackup(worldPath, tempWorldPath, true, false,true); // If "StopBeforeBackup" is set to "true" this will also automatically start the server when it's done
                 }
 
                 // Start server in case the BackupManager hasn't started it yet
@@ -166,11 +167,15 @@ namespace Vellum
                 // Backup interval
                 if (RunConfig.Backups.EnableBackups)
                 {
-                    System.Timers.Timer backupIntervalTimer = new System.Timers.Timer(RunConfig.Backups.BackupInterval * 60000);
+                    backupIntervalTimer = new System.Timers.Timer(RunConfig.Backups.BackupInterval * 60000);
                     backupIntervalTimer.AutoReset = true;
                     backupIntervalTimer.Elapsed += (object sender, ElapsedEventArgs e) =>
                     {
-                        InvokeBackup(worldPath, tempWorldPath);
+                        InvokeBackup(worldPath, tempWorldPath,false);
+                           if (backupIntervalTimer.Interval < RunConfig.Backups.BackupInterval * 60000)
+                        {
+                            backupIntervalTimer.Interval = RunConfig.Backups.BackupInterval * 60000;
+                        }
                     };
                     backupIntervalTimer.Start();
 
@@ -220,7 +225,7 @@ namespace Vellum
                                                 switch (cmd[2].Captures[0].Value)
                                                 {
                                                     case "backup":
-                                                        InvokeBackup(worldPath, tempWorldPath);
+                                                        InvokeBackup(worldPath, tempWorldPath,true);
                                                         result = true;
                                                         break;
 
@@ -365,11 +370,11 @@ namespace Vellum
             }
         }
 
-        public static void InvokeBackup(string worldPath, string tempWorldPath)
+        public static void InvokeBackup(string worldPath, string tempWorldPath,bool force)
         {
             if (!_backupManager.Processing)
             {
-                _backupManager.CreateWorldBackup(worldPath, tempWorldPath, false, true);
+                _backupManager.CreateWorldBackup(worldPath, tempWorldPath, false, true,force);
             }
             else
             {
@@ -381,7 +386,7 @@ namespace Vellum
         {
             if (!_backupManager.Processing && !_renderManager.Processing)
             {
-                _backupManager.CreateWorldBackup(worldPath, tempWorldPath, false, false);
+                _backupManager.CreateWorldBackup(worldPath, tempWorldPath, false, false,true);
                 _renderManager.Start(tempWorldPath);
             }
             else
